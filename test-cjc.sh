@@ -91,6 +91,9 @@ if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 		jdkRpmSuffixes="${jdkRpmSuffixes}
 		headless"
 	fi
+jdkRpmSuffixes="${jdkRpmSuffixes}
+demo
+src"
 modifiedConfigFiles="${modifiedConfigFiles}
 jre/lib/security/policy/unlimited/US_export_policy.jar
 jre/lib/security/policy/unlimited/local_policy.jar
