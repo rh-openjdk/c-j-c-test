@@ -3,6 +3,7 @@
 set -eux
 
 brewUrl="http://localhost/brewroot/packages"
+brewUrl2="http://localhost/brewroot/vol/rhel-6/packages"
 
 while [ "$#" -gt 0 ] ; do
 	arg="$1"
@@ -176,7 +177,9 @@ downloadRpm() (
 		mkdir -p "${dlDir}"
 	fi
 	if ! [ -e  "${dlDir}/${rpmName}" ] ; then
-		wget -P "${dlDir}" "${brewUrl}/${name}/${version}/${release}/${architecture}/${rpmName}"
+		if ! wget -P "${dlDir}" "${brewUrl}/${name}/${version}/${release}/${architecture}/${rpmName}" ; then
+			wget -P "${dlDir}" "${brewUrl2}/${name}/${version}/${release}/${architecture}/${rpmName}"
+		fi
 	else
 		printf 'Rpm %s found in cache, skipping' "${rpmName}" 1>&2
 	fi
