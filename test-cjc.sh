@@ -241,6 +241,9 @@ getJdkHomeDir() (
 	elif printf '%s\n' "${jdkName}" | grep -q '^java-1.7.0-openjdk' \
 	&& printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el6' ; then
 		jdkDirName="${name}-${version}.${architecture}"
+	elif printf '%s\n' "${jdkName}" | grep -q '^java-1.8.0-oracle' \
+	&& printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el6' ; then
+		jdkDirName="${name}-${version}.${architecture}"
 	else
 		jdkDirName="${name}-${version}-${release}.${architecture}"
 	fi
