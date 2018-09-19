@@ -79,8 +79,14 @@ devel"
 # http://pkgs.devel.redhat.com/cgit/rpms/java-1.8.0-oracle/tree/java-1.8.0-oracle.spec?h=oracle-java-rhel-7.5#n769
 # http://pkgs.devel.redhat.com/cgit/rpms/java-1.8.0-ibm/tree/java-1.8.0-ibm.spec?h=supp-rhel-7.5#n725
 
-modifiedConfigFiles="jre/lib/security/java.security
-jre/lib/security/java.policy"
+if printf '%s\n' "${jdkName}" | grep -q "java-11-openjdk" ; then
+    jreDir=""
+else
+    jreDir="jre/"
+fi
+
+modifiedConfigFiles="${jreDir}lib/security/java.security
+${jreDir}lib/security/java.policy"
 
 if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 # openjdks
@@ -96,23 +102,23 @@ jdkRpmSuffixes="${jdkRpmSuffixes}
 demo
 src"
 modifiedConfigFiles="${modifiedConfigFiles}
-jre/lib/security/policy/unlimited/US_export_policy.jar
-jre/lib/security/policy/unlimited/local_policy.jar
-jre/lib/security/policy/limited/US_export_policy.jar
-jre/lib/security/policy/limited/local_policy.jar
-jre/lib/logging.properties
-jre/lib/security/nss.cfg"
+${jreDir}lib/security/policy/unlimited/US_export_policy.jar
+${jreDir}lib/security/policy/unlimited/local_policy.jar
+${jreDir}lib/security/policy/limited/US_export_policy.jar
+${jreDir}lib/security/policy/limited/local_policy.jar
+${jreDir}lib/logging.properties
+${jreDir}lib/security/nss.cfg"
 else
 # proprietary jdks
 modifiedConfigFiles="${modifiedConfigFiles}
-jre/lib/security/cacerts
-jre/lib/security/blacklist"
+${jreDir}lib/security/cacerts
+${jreDir}lib/security/blacklist"
 fi
 
 if printf '%s\n' "${jdkName}" | grep -q "openjdk" \
 || printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-oracle" ; then
 modifiedConfigFiles="${modifiedConfigFiles}
-jre/lib/security/blacklisted.certs"
+${jreDir}lib/security/blacklisted.certs"
 fi
 
 if printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-ibm" \
@@ -120,7 +126,7 @@ if printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-ibm" \
 jdkRpmSuffixes="${jdkRpmSuffixes}
 plugin"
 modifiedConfigFiles="${modifiedConfigFiles}
-jre/lib/security/javaws.policy"
+${jreDir}lib/security/javaws.policy"
 fi
 
 
