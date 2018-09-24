@@ -87,8 +87,8 @@ else
     confDir="${jreDir}lib/"
 fi
 
-modifiedConfigFiles="${jreDir}lib/security/java.security
-${jreDir}lib/security/java.policy"
+modifiedConfigFiles="${confDir}security/java.security
+${confDir}security/java.policy"
 
 if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 # openjdks
@@ -103,11 +103,17 @@ if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 jdkRpmSuffixes="${jdkRpmSuffixes}
 demo
 src"
+if ! printf '%s\n' "${jdkName}" | grep -q "^java-1.7.0-openjdk" ; then
+modifiedConfigFiles="${modifiedConfigFiles}"
+else
 modifiedConfigFiles="${modifiedConfigFiles}
 ${confDir}security/policy/unlimited/US_export_policy.jar
 ${confDir}security/policy/unlimited/local_policy.jar
 ${confDir}security/policy/limited/US_export_policy.jar
-${confDir}security/policy/limited/local_policy.jar
+${confDir}security/policy/limited/local_policy.jar"		
+fi
+
+modifiedConfigFiles="${modifiedConfigFiles}
 ${confDir}logging.properties
 ${confDir}security/nss.cfg"
 else
