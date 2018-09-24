@@ -81,8 +81,10 @@ devel"
 
 if printf '%s\n' "${jdkName}" | grep -q "java-11-openjdk" ; then
     jreDir=""
+    confDir="conf/"
 else
     jreDir="jre/"
+    confDir="${jreDir}lib/"
 fi
 
 modifiedConfigFiles="${jreDir}lib/security/java.security
@@ -102,12 +104,12 @@ jdkRpmSuffixes="${jdkRpmSuffixes}
 demo
 src"
 modifiedConfigFiles="${modifiedConfigFiles}
-${jreDir}lib/security/policy/unlimited/US_export_policy.jar
-${jreDir}lib/security/policy/unlimited/local_policy.jar
-${jreDir}lib/security/policy/limited/US_export_policy.jar
-${jreDir}lib/security/policy/limited/local_policy.jar
-${jreDir}lib/logging.properties
-${jreDir}lib/security/nss.cfg"
+${confDir}security/policy/unlimited/US_export_policy.jar
+${confDir}security/policy/unlimited/local_policy.jar
+${confDir}security/policy/limited/US_export_policy.jar
+${confDir}security/policy/limited/local_policy.jar
+${confDir}logging.properties
+${confDir}security/nss.cfg"
 else
 # proprietary jdks
 modifiedConfigFiles="${modifiedConfigFiles}
