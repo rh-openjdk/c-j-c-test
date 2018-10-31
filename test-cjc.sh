@@ -82,6 +82,10 @@ devel"
 if printf '%s\n' "${jdkName}" | grep -q "java-11-openjdk" ; then
     jreDir=""
     confDir="conf/"
+jdkRpmSuffixes="${jdkRpmSuffixes}
+jmods
+javadoc
+javadoc-zip"
 else
     jreDir="jre/"
     confDir="${jreDir}lib/"
