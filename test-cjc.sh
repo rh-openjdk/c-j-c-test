@@ -312,10 +312,12 @@ downgradeToOld() {
 	jdkHome="$( getJdkHomeOld )"
 }
 
-
 cleanupJdks() {
 	sudo "${pkgMan}" -y remove --exclude="${cjcName}" "${jdkName}*"
 	sudo rm -rf "/usr/lib/jvm/${jdkName}"*
+	if [ -d "/etc/java" ] ; then
+		sudo rm -rf "/etc/java/${jdkName}"
+	fi
 }
 
 testMessage() (
