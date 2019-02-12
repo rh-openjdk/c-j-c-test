@@ -213,8 +213,8 @@ getJdkConfigFiles() (
 	for rpm in "${rpmsDir}"/*.rpm ; do
 		rpm -qcp "${rpm}" \
 		| sed \
-		-e "s;${jdkInstallPrefix}/[^/]\+/;${jdkInstallPrefix}/@{JVM_DIR_NAME}/;" \
-		-e "s;${etcPrefix}/[^/]\+/;${etcPrefix}/@{JVM_DIR_NAME}/;"
+		-e "s;^${jdkInstallPrefix}/[^/]\+/;${jdkInstallPrefix}/@{JVM_DIR_NAME}/;" \
+		-e "s;^${etcPrefix}/[^/]\+/;${etcPrefix}/@{JVM_DIR_NAME}/;"
 	done
 )
 
