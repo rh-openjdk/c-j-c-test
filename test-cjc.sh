@@ -71,28 +71,12 @@ jdkArch="x86_64"
 jdkRpmSuffixes="
 devel"
 
-# noreplace files
-# http://pkgs.devel.redhat.com/cgit/rpms/java-1.7.0-openjdk/tree/java-1.7.0-openjdk.spec?h=rhel-7.5#n1384
-# http://pkgs.devel.redhat.com/cgit/rpms/java-1.8.0-openjdk/tree/java-1.8.0-openjdk.spec?h=rhel-7.5#n530
-# http://pkgs.devel.redhat.com/cgit/rpms/java-1.6.0-sun/tree/java-1.6.0-sun.spec?h=oracle-java-rhel-7.5#n730
-# http://pkgs.devel.redhat.com/cgit/rpms/java-1.7.0-oracle/tree/java-1.7.0-oracle.spec?h=oracle-java-rhel-7.5#n658
-# http://pkgs.devel.redhat.com/cgit/rpms/java-1.8.0-oracle/tree/java-1.8.0-oracle.spec?h=oracle-java-rhel-7.5#n769
-# http://pkgs.devel.redhat.com/cgit/rpms/java-1.8.0-ibm/tree/java-1.8.0-ibm.spec?h=supp-rhel-7.5#n725
-
 if printf '%s\n' "${jdkName}" | grep -q "java-11-openjdk" ; then
-    jreDir=""
-    confDir="conf/"
 jdkRpmSuffixes="${jdkRpmSuffixes}
 jmods
 javadoc
 javadoc-zip"
-else
-    jreDir="jre/"
-    confDir="${jreDir}lib/"
 fi
-
-modifiedConfigFiles="${confDir}security/java.security
-${confDir}security/java.policy"
 
 if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 # openjdks
@@ -107,50 +91,22 @@ if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 jdkRpmSuffixes="${jdkRpmSuffixes}
 demo
 src"
-if ! printf '%s\n' "${jdkName}" | grep -q "^java-1.7.0-openjdk" ; then
-modifiedConfigFiles="${modifiedConfigFiles}"
-else
-modifiedConfigFiles="${modifiedConfigFiles}
-${confDir}security/policy/unlimited/US_export_policy.jar
-${confDir}security/policy/unlimited/local_policy.jar
-${confDir}security/policy/limited/US_export_policy.jar
-${confDir}security/policy/limited/local_policy.jar"		
-fi
-
-modifiedConfigFiles="${modifiedConfigFiles}
-${confDir}logging.properties
-${confDir}security/nss.cfg"
-else
-# proprietary jdks
-modifiedConfigFiles="${modifiedConfigFiles}
-${jreDir}lib/security/cacerts
-${jreDir}lib/security/blacklist"
-fi
-
-if printf '%s\n' "${jdkName}" | grep -q "openjdk" \
-|| printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-oracle" ; then
-modifiedConfigFiles="${modifiedConfigFiles}
-${jreDir}lib/security/blacklisted.certs"
 fi
 
 if printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-ibm" \
 || printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-oracle" ; then
 jdkRpmSuffixes="${jdkRpmSuffixes}
 plugin"
-modifiedConfigFiles="${modifiedConfigFiles}
-${jreDir}lib/security/javaws.policy"
 fi
 
 
 
 cjcName="copy-jdk-configs"
-
 testLog="test-summary.log"
-
-jdkHome=""
 tmpDir=""
-
 rpmCacheDir="rpmcache"
+etcPrefix="/etc/java/${jdkName}"
+jdkInstallPrefix="/usr/lib/jvm"
 
 cleanup() {
 	if [ -n "${tmpDir:-}" ] ; then
@@ -251,7 +207,18 @@ prepare() (
 	createRpmLinks "${newNoarchRpmsDir}" "${newRpmsDir}"
 )
 
-getJdkHomeDir() (
+
+getJdkConfigFiles() (
+	rpmsDir="$1"
+	for rpm in "${rpmsDir}"/*.rpm ; do
+		rpm -qcp "${rpm}" \
+		| sed \
+		-e "s;${jdkInstallPrefix}/[^/]\+/;${jdkInstallPrefix}/@{JVM_DIR_NAME}/;" \
+		-e "s;${etcPrefix}/[^/]\+/;${etcPrefix}/@{JVM_DIR_NAME}/;"
+	done
+)
+
+getJdkDirName() (
 	name="$1"
 	version="$2"
 	release="$3"
@@ -274,19 +241,18 @@ getJdkHomeDir() (
 	else
 		jdkDirName="${name}-${version}-${release}.${architecture}"
 	fi
-	printf '/usr/lib/jvm/%s' "${jdkDirName}"
+	printf '%s' "${jdkDirName}"
 )
 
-getJdkHomeOld() {
-	getJdkHomeDir "${jdkName}" "${oldJdkVersion}" "${oldJdkRelease}" "${jdkArch}"
+setGlobals() {
+	configFilesOld="$( getJdkConfigFiles "${oldRpmsDir}" | sort -u )"
+	configFilesNew="$( getJdkConfigFiles "${newRpmsDir}" | sort -u )"
+	jdkDirNameOld="$( getJdkDirName "${jdkName}" "${oldJdkVersion}" "${oldJdkRelease}" "${jdkArch}" )"
+	jdkDirNameNew="$( getJdkDirName "${jdkName}" "${newJdkVersion}" "${newJdkRelease}" "${jdkArch}" )"
 }
 
-getJdkHomeNew() {
-	getJdkHomeDir "${jdkName}" "${newJdkVersion}" "${newJdkRelease}" "${jdkArch}"
-}
-
-isSameJdkHomeOldNew() {
-	if [ "x$( getJdkHomeOld )" = "x$( getJdkHomeNew )" ] ; then
+isSameJdkDirOldNew() {
+	if [ "x${jdkDirNameOld}" = "x${jdkDirNameNew}" ] ; then
 		return 0
 	fi
 	return 1
@@ -294,22 +260,18 @@ isSameJdkHomeOldNew() {
 
 installOld() {
 	sudo "${pkgMan}" -y install --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
-	jdkHome="$( getJdkHomeOld )"
 }
 
 installNew() {
 	sudo "${pkgMan}" -y install --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
-	jdkHome="$( getJdkHomeNew )"
 }
 
 upgradeToNew() {
 	sudo "${pkgMan}" -y upgrade --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
-	jdkHome="$( getJdkHomeNew )"
 }
 
 downgradeToOld() {
 	sudo "${pkgMan}" -y downgrade --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
-	jdkHome="$( getJdkHomeOld )"
 }
 
 cleanupJdks() {
@@ -432,7 +394,7 @@ testFileModifiedInstall() (
 	fi
 
 	if ! testFileExists "${file}.rpmnew" && ! testFileExists "${file}.rpmsave" ; then
-		if ! isSameJdkHomeOldNew ; then
+		if ! isSameJdkDirOldNew ; then
 			printf '%s\n' "FAIL: Nor ${file}.rpmnew nor ${file}.rpmsave exists !" 1>&2
 			err=1
 		elif ! cat "${file}" | grep -q "${testPattern}" ; then
@@ -460,14 +422,13 @@ testUpdateUnmodified() (
 	testMessage "TEST: Update, config files unmodified"
 
 	checkedCommand "Installing old JDK" installOld
-	jdkHome="$( getJdkHomeOld )"
 	checkedCommand "Verifying installed files (old)" verifyJdkInstallation
 	checkedCommand "Installing new JDK" installNew
-	jdkHome="$( getJdkHomeNew )"
 	checkedCommand "Verifying installed files (new)" verifyJdkInstallation
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesNew}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameNew};" \
 	| while read -r configFile ; do
-		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${jdkHome}/${configFile}"
+		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${configFile}"
 	done
 	testMessage ""
 )
@@ -476,14 +437,13 @@ testDowngradeUnmodified() (
 	testMessage "TEST: Downgrade, config files unmodified"
 
 	checkedCommand "Installing new JDK" installNew
-	jdkHome="$( getJdkHomeNew )"
 	checkedCommand "Verifying installed files (new)" verifyJdkInstallation
 	checkedCommand "Downgrading to old JDK" downgradeToOld
-	jdkHome="$( getJdkHomeOld )"
 	checkedCommand "Verifying installed files (old)" verifyJdkInstallation
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesOld}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameOld};" \
 	| while read -r configFile ; do
-		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${jdkHome}/${configFile}"
+		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${configFile}"
 	done
 	testMessage ""
 )
@@ -492,17 +452,17 @@ testUpdateModified() (
 	testMessage "TEST: Upgrade, config files modified"
 
 	checkedCommand "Installing old JDK" installOld
-	jdkHome="$( getJdkHomeOld )"
 	checkedCommand "Verifying installed files (old)" verifyJdkInstallation
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesNew}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameOld};" \
 	| while read -r configFile ; do
-		checkedCommand "Modifying ${configFile}" modifyFile "${jdkHome}/${configFile}"
+		checkedCommand "Modifying ${configFile}" modifyFile "${configFile}"
 	done
 	checkedCommand "Installing new JDK" installNew
-	jdkHome="$( getJdkHomeNew )"
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesNew}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameNew};" \
 	| while read -r configFile ; do
-		checkedCommand "checking ${configFile}" testFileModifiedInstall "${jdkHome}/${configFile}"
+		checkedCommand "checking ${configFile}" testFileModifiedInstall "${configFile}"
 	done
 	testMessage ""
 )
@@ -511,18 +471,18 @@ testDowngradeModified() (
 	testMessage "TEST: Downgrade, config files modified"
 
 	checkedCommand "Installing new JDK" installNew
-	jdkHome="$( getJdkHomeNew )"
 	checkedCommand "Verifying installed files (new)" verifyJdkInstallation
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesOld}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameNew};" \
 	| while read -r configFile ; do
-		checkedCommand "Modifying ${configFile}" modifyFile "${jdkHome}/${configFile}"
+		checkedCommand "Modifying ${configFile}" modifyFile "${configFile}"
 	done
 
 	checkedCommand "Downgrading to old JDK" downgradeToOld
-	jdkHome="$( getJdkHomeOld )"
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesOld}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameOld};" \
 	| while read -r configFile ; do
-		checkedCommand "checking ${configFile}" testFileModifiedInstall "${jdkHome}/${configFile}"
+		checkedCommand "checking ${configFile}" testFileModifiedInstall "${configFile}"
 	done
 	testMessage ""
 )
@@ -531,17 +491,17 @@ testUpgradeDeleted() (
 	testMessage "TEST: Update, config files deleted"
 
 	checkedCommand "Installing old JDK" installOld
-	jdkHome="$( getJdkHomeOld )"
 	checkedCommand "Verifying installed files (old)" verifyJdkInstallation
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesNew}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameOld};" \
 	| while read -r configFile ; do
-		sudo rm -rf "${jdkHome}/${configFile}"
+		sudo rm -rf "${configFile}"
 	done
 	checkedCommand "Installing new JDK" installNew
-	jdkHome="$( getJdkHomeNew )"
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesNew}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameNew};" \
 	| while read -r configFile ; do
-		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${jdkHome}/${configFile}"
+		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${configFile}"
 	done
 	testMessage ""
 )
@@ -550,23 +510,24 @@ testDowngradeDeleted() (
 	testMessage "TEST: Downgrade, config files deleted"
 
 	checkedCommand "Installing new JDK" installNew
-	jdkHome="$( getJdkHomeNew )"
 	checkedCommand "Verifying installed files (new)" verifyJdkInstallation
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesOld}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameNew};" \
 	| while read -r configFile ; do
-		sudo rm -rf "${jdkHome}/${configFile}"
+		sudo rm -rf "${configFile}"
 	done
 	checkedCommand "Downgrading to old JDK" downgradeToOld
-	jdkHome="$( getJdkHomeOld )"
-	printf '%s\n' "${modifiedConfigFiles}" \
+	printf '%s\n' "${configFilesOld}" \
+	| sed "s;@{JVM_DIR_NAME};${jdkDirNameOld};" \
 	| while read -r configFile ; do
-		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${jdkHome}/${configFile}"
+		checkedCommand "checking ${configFile}" testFileUnmodifiedInstall "${configFile}"
 	done
 	testMessage ""
 )
 
 basicInit
 prepare
+setGlobals
 cleanupJdks || true
 testUpdateUnmodified
 cleanupJdks
