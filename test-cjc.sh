@@ -2,8 +2,9 @@
 
 set -eux
 
-brewUrl="http://localhost/brewroot/packages"
-brewUrl2="http://localhost/brewroot/vol/rhel-6/packages"
+downloadUrls="http://localhost/brewroot/packages
+http://localhost/brewroot/vol/rhel-6/packages
+https://kojipkgs.fedoraproject.org/packages"
 
 while [ "$#" -gt 0 ] ; do
 	arg="$1"
@@ -30,6 +31,16 @@ while [ "$#" -gt 0 ] ; do
 			;;
 		--newJdkRelease)
 			newJdkRelease="${2}"
+			shift
+			shift
+			;;
+		--downloadUrl)
+			downloadUrls="$( printf '%s\n%s' "${2}" "${downloadUrls}"  )"
+			shift
+			shift
+			;;
+		--rpmCacheDir)
+			rpmCacheDir="${2}"
 			shift
 			shift
 			;;
@@ -104,7 +115,9 @@ fi
 cjcName="copy-jdk-configs"
 testLog="test-summary.log"
 tmpDir=""
-rpmCacheDir="rpmcache"
+if [ -z "${rpmCacheDir:-}" ] ; then
+	rpmCacheDir="rpmcache"
+fi
 etcPrefix="/etc/java/${jdkName}"
 jdkInstallPrefix="/usr/lib/jvm"
 
@@ -151,9 +164,13 @@ downloadRpm() (
 		mkdir -p "${dlDir}"
 	fi
 	if ! [ -e  "${dlDir}/${rpmName}" ] ; then
-		if ! wget -P "${dlDir}" "${brewUrl}/${name}/${version}/${release}/${architecture}/${rpmName}" ; then
-			wget -P "${dlDir}" "${brewUrl2}/${name}/${version}/${release}/${architecture}/${rpmName}"
-		fi
+		printf '%s\n' "${downloadUrls}" \
+		| while read -r dlUrl ; do
+			if  wget -P "${dlDir}" "${dlUrl}/${name}/${version}/${release}/${architecture}/${rpmName}" ; then
+				break;
+			fi
+		done
+		[ -e  "${dlDir}/${rpmName}" ] || return 1
 	else
 		printf 'Rpm %s found in cache, skipping' "${rpmName}" 1>&2
 	fi
@@ -192,14 +209,13 @@ prepare() (
 	EOF
 
 	downloadJdk "${oldJdkVersion}" "${oldJdkRelease}"
-	downloadJdk "${newJdkVersion}" "${newJdkRelease}"
-
 	mkdir "${oldRpmsDir}"
 	oldArchRpmsDir="$( getRpmCacheDir "${jdkName}" "${oldJdkVersion}" "${oldJdkRelease}" "${jdkArch}" )"
 	createRpmLinks "${oldArchRpmsDir}" "${oldRpmsDir}"
 	oldNoarchRpmsDir="$( getRpmCacheDir "${jdkName}" "${oldJdkVersion}" "${oldJdkRelease}" "noarch" )"
 	createRpmLinks "${oldNoarchRpmsDir}" "${oldRpmsDir}"
 
+	downloadJdk "${newJdkVersion}" "${newJdkRelease}"
 	mkdir "${newRpmsDir}"
 	newArchRpmsDir="$( getRpmCacheDir "${jdkName}" "${newJdkVersion}" "${newJdkRelease}" "${jdkArch}" )"
 	createRpmLinks "${newArchRpmsDir}" "${newRpmsDir}"
