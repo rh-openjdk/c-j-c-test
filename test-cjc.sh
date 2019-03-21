@@ -421,15 +421,15 @@ testFileModifiedInstall() (
 		fileWithModifications="${file}"
 		bckpFileCount=0
 		if testFileExists "${file}.rpmnew" ; then
-			bckpFileCount="$(( bckpCount + 1 ))"
+			bckpFileCount="$(( bckpFileCount + 1 ))"
 		fi
 		if testFileExists "${file}.rpmsave" ; then
 			fileWithModifications="${file}.rpmsave"
-			bckpFileCount="$(( bckpCount + 1 ))"
+			bckpFileCount="$(( bckpFileCount + 1 ))"
 		fi
 		if testFileExists "${file}.rpmorig" ; then
 			fileWithModifications="${file}.rpmorig"
-			bckpFileCount="$(( bckpCount + 1 ))"
+			bckpFileCount="$(( bckpFileCount + 1 ))"
 		fi
 		if [ "${bckpFileCount}" -ne 1 ] ; then
 			printf '%s\n' "FAIL: Exactly one of ${file}.rpmnew, ${file}.rpmsave, ${file}.rpmorig is expected to exist!" 1>&2
