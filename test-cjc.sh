@@ -108,7 +108,7 @@ if printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-ibm" \
 || printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-oracle" ; then
 jdkRpmSuffixes="${jdkRpmSuffixes}
 plugin"
-	if printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el8' ; the
+	if printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el8' ; then
 		jdkRpmSuffixes="${jdkRpmSuffixes}
 webstart
 headless"
