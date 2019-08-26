@@ -111,7 +111,10 @@ plugin"
 	if printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el8' ; then
 		jdkRpmSuffixes="${jdkRpmSuffixes}
 webstart
-headless"
+headless
+demo
+jdbc
+src"
 	fi
 fi
 
