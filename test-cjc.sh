@@ -76,7 +76,7 @@ if [ -z "${newJdkRelease:-}" ] ; then
 	exit 1
 fi
 
-jdkArch="x86_64"
+jdkArch="$( uname -m )"
 
 # firt empty line is intentional (it is no suffix)
 jdkRpmSuffixes="
