@@ -318,6 +318,13 @@ checkedCommand() (
 	message="$1"
 	shift
 
+	oldNvrPattern="${jdkName}-${oldJdkVersion}-${oldJdkRelease}.${jdkArch}"
+	oldNvrSubst='${NVR_OLD}'
+	newNvrPattern="${jdkName}-${newJdkVersion}-${newJdkRelease}.${jdkArch}"
+	newNvrSubst='${NVR_NEW}'
+
+	message="$( printf '%s' "${message}" | sed -e "s/${oldNvrPattern}/${oldNvrSubst}/g" -e "s/${newNvrPattern}/${newNvrSubst}/g"  )"
+
 	tee -a "${testLog}" <<- EOF
 	INFO: ${message}
 	EOF
