@@ -118,7 +118,15 @@ src"
 	fi
 fi
 
-
+oldJdkInstName="${jdkName}"
+newJdkInstName="${jdkName}"
+if printf '%s\n' "${jdkName}" | grep -q "java-latest-openjdk" ; then
+	majorVersionPattern='^([0-9]+)[.].*$'
+	oldJdkVersionMajor="$( printf '%s' "${oldJdkVersion}" | sed -E "s/${majorVersionPattern}/\\1/g" )"
+	oldJdkInstName="$( printf '%s' "${oldJdkInstName}" | sed "s/-latest-/-${oldJdkVersionMajor}-/g" )"
+	newJdkVersionMajor="$( printf '%s' "${newJdkVersion}" | sed -E "s/${majorVersionPattern}/\\1/g" )"
+	newJdkInstName="$( printf '%s' "${newJdkInstName}" | sed "s/-latest-/-${newJdkVersionMajor}-/g" )"
+fi
 
 cjcName="copy-jdk-configs"
 testLog="test-summary.log"
@@ -126,7 +134,7 @@ tmpDir=""
 if [ -z "${rpmCacheDir:-}" ] ; then
 	rpmCacheDir="rpmcache"
 fi
-etcPrefix="/etc/java/${jdkName}"
+etcPrefix="/etc/java"
 jdkInstallPrefix="/usr/lib/jvm"
 
 cleanup() {
@@ -234,11 +242,12 @@ prepare() (
 
 getJdkConfigFiles() (
 	rpmsDir="$1"
+	instName="$2"
 	for rpm in "${rpmsDir}"/*.rpm ; do
 		rpm -qcp "${rpm}" \
-		| sed \
-		-e "s;^${jdkInstallPrefix}/[^/]\+/;${jdkInstallPrefix}/@{JVM_DIR_NAME}/;" \
-		-e "s;^${etcPrefix}/[^/]\+/;${etcPrefix}/@{JVM_DIR_NAME}/;"
+		| sed -E \
+		-e "s;^${jdkInstallPrefix}/[^/]+/;${jdkInstallPrefix}/@{JVM_DIR_NAME}/;" \
+		-e "s;^${etcPrefix}/${instName}/[^/]+/;${etcPrefix}/${instName}/@{JVM_DIR_NAME}/;"
 	done
 )
 
@@ -269,10 +278,10 @@ getJdkDirName() (
 )
 
 setGlobals() {
-	configFilesOld="$( getJdkConfigFiles "${oldRpmsDir}" | sort -u )"
-	configFilesNew="$( getJdkConfigFiles "${newRpmsDir}" | sort -u )"
-	jdkDirNameOld="$( getJdkDirName "${jdkName}" "${oldJdkVersion}" "${oldJdkRelease}" "${jdkArch}" )"
-	jdkDirNameNew="$( getJdkDirName "${jdkName}" "${newJdkVersion}" "${newJdkRelease}" "${jdkArch}" )"
+	configFilesOld="$( getJdkConfigFiles "${oldRpmsDir}" "${oldJdkInstName}" | sort -u )"
+	configFilesNew="$( getJdkConfigFiles "${newRpmsDir}" "${newJdkInstName}" | sort -u )"
+	jdkDirNameOld="$( getJdkDirName "${oldJdkInstName}" "${oldJdkVersion}" "${oldJdkRelease}" "${jdkArch}" )"
+	jdkDirNameNew="$( getJdkDirName "${newJdkInstName}" "${newJdkVersion}" "${newJdkRelease}" "${jdkArch}" )"
 }
 
 isSameJdkDirOldNew() {
@@ -301,8 +310,12 @@ downgradeToOld() {
 cleanupJdks() {
 	sudo "${pkgMan}" -y remove --exclude="${cjcName}" "${jdkName}*"
 	sudo rm -rf "/usr/lib/jvm/${jdkName}"*
+	sudo rm -rf "/usr/lib/jvm/${oldJdkInstName}"*
+	sudo rm -rf "/usr/lib/jvm/${newJdkInstName}"*
 	if [ -d "/etc/java" ] ; then
 		sudo rm -rf "/etc/java/${jdkName}"
+		sudo rm -rf "/etc/java/${oldJdkInstName}"
+		sudo rm -rf "/etc/java/${newJdkInstName}"
 	fi
 }
 
@@ -318,9 +331,9 @@ checkedCommand() (
 	message="$1"
 	shift
 
-	oldNvrPattern="${jdkName}-${oldJdkVersion}-${oldJdkRelease}.${jdkArch}"
+	oldNvrPattern="${jdkDirNameOld}"
 	oldNvrSubst='${NVR_OLD}'
-	newNvrPattern="${jdkName}-${newJdkVersion}-${newJdkRelease}.${jdkArch}"
+	newNvrPattern="${jdkDirNameNew}"
 	newNvrSubst='${NVR_NEW}'
 
 	message="$( printf '%s' "${message}" | sed -e "s/${oldNvrPattern}/${oldNvrSubst}/g" -e "s/${newNvrPattern}/${newNvrSubst}/g"  )"
