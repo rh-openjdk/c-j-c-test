@@ -436,17 +436,13 @@ testFileModifiedInstall() (
 		printf '%s\n' "FAIL: File does not exist ${file} !" 1>&2
 		err=1
 	fi
-
+	fileWithModifications="${file}"
 	if ! testFileExists "${file}.rpmnew" && ! testFileExists "${file}.rpmsave" && ! testFileExists "${file}.rpmorig" ; then
 		if ! isSameJdkDirOldNew ; then
 			printf '%s\n' "FAIL: Neither of ${file}.rpmnew, ${file}.rpmsave, ${file}.rpmorig exists" 1>&2
 			err=1
-		elif ! cat "${file}" | grep -q "${testPattern}" ; then
-			printf '%s\n' "FAIL: File ${file} does not have expected content !" 1>&2
-			err=1
 		fi
 	else
-		fileWithModifications="${file}"
 		bckpFileCount=0
 		if testFileExists "${file}.rpmnew" ; then
 			bckpFileCount="$(( bckpFileCount + 1 ))"
@@ -462,14 +458,12 @@ testFileModifiedInstall() (
 		if [ "${bckpFileCount}" -ne 1 ] ; then
 			printf '%s\n' "FAIL: Exactly one of ${file}.rpmnew, ${file}.rpmsave, ${file}.rpmorig is expected to exist!" 1>&2
 			err=1
-		else
-			if ! cat "${fileWithModifications}" | grep -q "${testPattern}" ; then
-				printf '%s\n' "FAIL: File ${fileWithModifications} does not have expected content !" 1>&2
-				err=1
-			fi
 		fi
 	fi
-
+	if ! cat "${fileWithModifications}" | grep -q "${testPattern}" ; then
+		printf '%s\n' "FAIL: File ${fileWithModifications} does not have modified content !" 1>&2
+		err=1
+	fi
 	return "${err}"
 )
 
