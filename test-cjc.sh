@@ -44,6 +44,11 @@ while [ "$#" -gt 0 ] ; do
 			shift
 			shift
 			;;
+		--jdkSuffix)
+			jdkSuffix="${2}"
+			shift
+			shift
+			;;
 		*)
 			printf '%s\n' "Unsupported arg: $1"
 			exit 1
@@ -80,13 +85,16 @@ jdkArch="$( uname -m )"
 
 # firt empty line is intentional (it is no suffix)
 jdkRpmSuffixes="
-devel"
+-devel"
 
 if printf '%s\n' "${jdkName}" | grep -q "java-11-openjdk" ; then
 jdkRpmSuffixes="${jdkRpmSuffixes}
-jmods
-javadoc
-javadoc-zip"
+-jmods"
+if [ -z "${jdkSuffix:-}" ] ; then
+jdkRpmSuffixes="${jdkRpmSuffixes}
+-javadoc
+-javadoc-zip"
+fi
 fi
 
 if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
@@ -97,25 +105,29 @@ if printf '%s\n' "${jdkName}" | grep -q "openjdk" ; then
 		true
 	else
 		jdkRpmSuffixes="${jdkRpmSuffixes}
-		headless"
+		-headless"
 	fi
 jdkRpmSuffixes="${jdkRpmSuffixes}
-demo
-src"
+-demo
+-src"
 fi
 
 if printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-ibm" \
 || printf '%s\n' "${jdkName}" | grep -q "java-1.8.0-oracle" ; then
 jdkRpmSuffixes="${jdkRpmSuffixes}
-plugin"
+-plugin"
 	if printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el8' ; then
 		jdkRpmSuffixes="${jdkRpmSuffixes}
-webstart
-headless
-demo
-jdbc
-src"
+-webstart
+-headless
+-demo
+-jdbc
+-src"
 	fi
+fi
+
+if [ -n "${jdkSuffix:-}" ] ; then
+    jdkRpmSuffixes="$( printf '%s' "${jdkRpmSuffixes}" | sed "s/\$/${jdkSuffix}/g" )"
 fi
 
 oldJdkInstName="${jdkName}"
@@ -198,7 +210,7 @@ downloadJdk() (
 
 	printf '%s\n' "${jdkRpmSuffixes}" \
 	| while read -r rpm ; do
-		rpmName="${jdkName}${rpm:+-}${rpm}"
+		rpmName="${jdkName}${rpm}"
 		downloadRpm "${jdkName}" "${version}" "${release}" "${jdkArch}" "${rpmName}"
 	done
 )
@@ -272,7 +284,7 @@ getJdkDirName() (
 	&& printf '%s\n' "${newJdkRelease:-}" | grep -q '\.el6' ; then
 		jdkDirName="${name}-${version}.${architecture}"
 	else
-		jdkDirName="${name}-${version}-${release}.${architecture}"
+		jdkDirName="${name}-${version}-${release}.${architecture}${jdkSuffix:-}"
 	fi
 	printf '%s' "${jdkDirName}"
 )
@@ -356,7 +368,7 @@ verifyJdkInstallation() (
 	verifyString="$(
 	printf '%s\n' "${jdkRpmSuffixes}" \
 	| while read -r suffix ; do
-		pkgName="${jdkName}${suffix:+-}${suffix}"
+		pkgName="${jdkName}${suffix}"
 		rpm -V "${pkgName}"
 	done | grep -v "classes.jsa" )"
 	if [ -n "${verifyString}" ] ; then
