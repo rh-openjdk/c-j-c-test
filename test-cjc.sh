@@ -586,6 +586,43 @@ testDowngradeDeleted() (
 	testMessage ""
 )
 
+EMPTY_DIR="/etc/empty_dir.test"
+
+testRogueLinksEl7() (
+	testMessage "TEST: Update with rogue links in /usr/lib/jvm"
+
+	checkedCommand "Installing old JDK" installOld
+	checkedCommand "Verifying installed files (old)" verifyJdkInstallation
+
+	sudo mkdir -p $EMPTY_DIR
+	ROGUE_LINK="/usr/lib/jvm/${jdkDirNameOld}/passwd.link"
+	sudo ln -s "/etc/passwd" "$ROGUE_LINK"
+
+	checkedCommand "Installing new JDK" installNew
+	checkedCommand "Verifying installed files (new)" verifyJdkInstallation
+
+	sudo rm "$ROGUE_LINK"
+	checkedCommand "checking if update deleted empty dirs" $([[ -d "$EMPTY_DIR" ]])
+)
+
+testRogueLinksEl8() (
+	testMessage "TEST: Update with rogue links in /etc/java"
+
+	checkedCommand "Installing old JDK" installOld
+	checkedCommand "Verifying installed files (old)" verifyJdkInstallation
+
+	sudo mkdir -p $EMPTY_DIR
+	ROGUE_LINK="/etc/java/${jdkDirNameOld}/passwd.link"
+	sudo mkdir -p "/etc/java/${jdkDirNameOld}"
+	sudo ln -s "/etc/passwd" "$ROGUE_LINK"
+
+	checkedCommand "Installing new JDK" installNew
+	checkedCommand "Verifying installed files (new)" verifyJdkInstallation
+
+	sudo rm "$ROGUE_LINK"
+	checkedCommand "checking if update deleted empty dirs" $([[ -d "$EMPTY_DIR" ]])                 
+)
+
 basicInit
 prepare
 setGlobals
@@ -601,6 +638,10 @@ cleanupJdks
 testUpgradeDeleted
 cleanupJdks
 testDowngradeDeleted
+cleanupJdks
+testRogueLinksEl7
+cleanupJdks
+testRogueLinksEl8
 cleanupJdks
 
 overallResult=0
