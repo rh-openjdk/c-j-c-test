@@ -1,0 +1,127 @@
+name: "test"
+
+on:
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "*"
+
+jobs:
+  test-centos7:
+    name: "Centos 7"
+    runs-on: "ubuntu-latest"
+    container: "quay.io/centos/centos:centos7"
+    strategy:
+      fail-fast: false
+      matrix:
+        conf:
+          - JDK 8
+          - JDK 11
+        include:
+          - conf: JDK 8
+            pkgName: "java-1.8.0-openjdk"
+          - conf: JDK 11
+            pkgName: "java-11-openjdk"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test
+        run: |
+          yum -y install sudo wget yum-utils copy-jdk-configs
+          ./test-cjc.sh --jdkName "${{ matrix.pkgName }}" --oldJdkAuto --newJdkAuto
+      - name: Check
+        if: ${{ always() }}
+        run: |
+          cat test-summary.log
+          ! grep -qi '^FAILED:' test-summary.log
+
+  test-centos8:
+    name: "Centos 8"
+    runs-on: "ubuntu-latest"
+    container: "quay.io/centos/centos:stream8"
+    strategy:
+      fail-fast: false
+      matrix:
+        conf:
+          - JDK 8
+          - JDK 11
+          - JDK 17
+        include:
+          - conf: JDK 8
+            pkgName: "java-1.8.0-openjdk"
+          - conf: JDK 11
+            pkgName: "java-11-openjdk"
+          - conf: JDK 17
+            pkgName: "java-17-openjdk"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test
+        run: |
+          dnf -y install sudo wget dnf-plugins-core copy-jdk-configs
+          ./test-cjc.sh --jdkName "${{ matrix.pkgName }}" --oldJdkAuto --newJdkAuto
+      - name: Check
+        if: ${{ always() }}
+        run: |
+          cat test-summary.log
+          ! grep -qi '^FAILED:' test-summary.log
+
+  test-centos9:
+    name: "Centos 9"
+    runs-on: "ubuntu-latest"
+    container: "quay.io/centos/centos:stream9"
+    strategy:
+      fail-fast: false
+      matrix:
+        conf:
+          - JDK 8
+          - JDK 11
+          - JDK 17
+        include:
+          - conf: JDK 8
+            pkgName: "java-1.8.0-openjdk"
+          - conf: JDK 11
+            pkgName: "java-11-openjdk"
+          - conf: JDK 17
+            pkgName: "java-17-openjdk"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test
+        run: |
+          dnf -y install sudo wget dnf-plugins-core copy-jdk-configs
+          ./test-cjc.sh --jdkName "${{ matrix.pkgName }}" --oldJdkAuto --newJdkAuto
+      - name: Check
+        if: ${{ always() }}
+        run: |
+          cat test-summary.log
+          ! grep -qi '^FAILED:' test-summary.log
+
+  test-fedora:
+    name: "Fedora 37"
+    runs-on: "ubuntu-latest"
+    container: "quay.io/fedora/fedora:37"
+    strategy:
+      fail-fast: false
+      matrix:
+        conf:
+          - JDK 8
+          - JDK 11
+          - JDK 17
+        include:
+          - conf: JDK 8
+            pkgName: "java-1.8.0-openjdk"
+          - conf: JDK 11
+            pkgName: "java-11-openjdk"
+          - conf: JDK 17
+            pkgName: "java-17-openjdk"
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test
+        run: |
+          dnf -y install sudo wget dnf-plugins-core copy-jdk-configs
+          ./test-cjc.sh --jdkName "${{ matrix.pkgName }}" --oldJdkAuto --newJdkAuto
+      - name: Check
+        if: ${{ always() }}
+        run: |
+          cat test-summary.log
+          ! grep -qi '^FAILED:' test-summary.log

@@ -258,8 +258,10 @@ basicInit() {
 	oldRpmsDir="${tmpDir}/oldrpms"
 
 	pkgMan="yum"
+	noAutoRem=""
 	if type dnf &> /dev/null ; then
 		pkgMan="dnf"
+		noAutoRem="--noautoremove"
 	fi
 }
 
@@ -279,21 +281,30 @@ downloadRpm() (
 	architecture="$4"
 	rpmName="$5"
 
-	rpmName="${rpmName}-${version}-${release}.${architecture}.rpm"
+	rpmNvr="${rpmName}-${version}-${release}.${architecture}"
 	dlDir="$( getRpmCacheDir "${name}" "${version}" "${release}" "${architecture}" )"
 	if ! [ -d "${dlDir}" ] ; then
 		mkdir -p "${dlDir}"
 	fi
-	if ! [ -e  "${dlDir}/${rpmName}" ] ; then
+	if ! [ -e  "${dlDir}/${rpmNvr}.rpm" ] ; then
+		if type dnf > /dev/null 2>&1 ; then
+			if sudo dnf download --destdir "${dlDir}" "${rpmNvr}" ; then
+				return 0
+			fi
+		elif type yumdownloader > /dev/null 2>&1 ; then
+			if sudo yumdownloader --destdir "${dlDir}" "${rpmNvr}" ; then
+				return 0
+			fi
+		fi
 		printf '%s\n' "${downloadUrls}" \
 		| while read -r dlUrl ; do
-			if  wget -P "${dlDir}" "${dlUrl}/${name}/${version}/${release}/${architecture}/${rpmName}" ; then
+			if  wget -P "${dlDir}" "${dlUrl}/${name}/${version}/${release}/${architecture}/${rpmNvr}.rpm" ; then
 				break;
 			fi
 		done
-		[ -e  "${dlDir}/${rpmName}" ] || return 1
+		[ -e  "${dlDir}/${rpmNvr}.rpm" ] || return 1
 	else
-		printf 'Rpm %s found in cache, skipping' "${rpmName}" 1>&2
+		printf 'Rpm %s found in cache, skipping' "${rpmNvr}" 1>&2
 	fi
 )
 
@@ -413,7 +424,7 @@ downgradeToOld() {
 }
 
 cleanupJdks() {
-	sudo "${pkgMan}" -y remove --exclude="${cjcName}" "${jdkName}*"
+	sudo "${pkgMan}" ${noAutoRem} -y remove --exclude="${cjcName}" "${jdkName}*"
 	sudo rm -rf "/usr/lib/jvm/${jdkName}"*
 	sudo rm -rf "/usr/lib/jvm/${oldJdkInstName}"*
 	sudo rm -rf "/usr/lib/jvm/${newJdkInstName}"*
