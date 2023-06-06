@@ -23,6 +23,10 @@ while [ "$#" -gt 0 ] ; do
 			shift
 			shift
 			;;
+		--oldJdkAuto)
+			oldJdkAuto=1
+			shift
+			;;
 		--newJdkVersion)
 			newJdkVersion="${2}"
 			shift
@@ -31,6 +35,10 @@ while [ "$#" -gt 0 ] ; do
 		--newJdkRelease)
 			newJdkRelease="${2}"
 			shift
+			shift
+			;;
+		--newJdkAuto)
+			newJdkAuto=1
 			shift
 			;;
 		--downloadUrl)
@@ -60,27 +68,113 @@ if [ -z "${jdkName:-}" ] ; then
 	exit 1
 fi
 
-if [ -z "${oldJdkVersion:-}" ] ; then
-	printf '%s\n' "oldJdkVersion not set"
-	exit 1
+if [ -z "${oldJdkAuto:-}" ] ; then
+	if [ -z "${oldJdkVersion:-}" ] ; then
+		printf '%s\n' "oldJdkVersion not set"
+		exit 1
+	fi
+
+	if [ -z "${oldJdkRelease:-}" ] ; then
+		printf '%s\n' "oldJdkRelease not set"
+		exit 1
+	fi
 fi
 
-if [ -z "${oldJdkRelease:-}" ] ; then
-	printf '%s\n' "oldJdkRelease not set"
-	exit 1
+if [ -z "${newJdkAuto:-}" ] ; then
+	if [ -z "${newJdkVersion:-}" ] ; then
+		printf '%s\n' "newJdkVersion not set"
+		exit 1
+	fi
+
+	if [ -z "${newJdkRelease:-}" ] ; then
+		printf '%s\n' "newJdkRelease not set"
+		exit 1
+	fi
 fi
 
-if [ -z "${newJdkVersion:-}" ] ; then
-	printf '%s\n' "newJdkVersion not set"
-	exit 1
-fi
+versionCompare() (
+	ver1="${1:-}"
+	ver2="${2:-}"
+	if [ "x${ver1}" = "x${ver2}" ] ; then
+		# ver1 == ver2
+		return 0
+	fi
+	vers="$( printf '%s\n%s' "${ver1}" "${ver2}" )"
+	versSorted="$( printf '%s' "${vers}" | sort -V )"
+	if [ "x${vers}" = "x${versSorted}" ] ; then
+		# ver1 < ver2
+		return 1
+	else
+		# ver1 > ver2
+		return 2
+	fi
+)
 
-if [ -z "${newJdkRelease:-}" ] ; then
-	printf '%s\n' "newJdkRelease not set"
-	exit 1
-fi
+versionCompareLT() (
+	ver1="${1:-}"
+	ver2="${2:-}"
+	versionCompare "${ver1}" "${ver2}"
+	ret="$?"
+	if [ "${ret}" -eq 1 ] ; then
+		return 0
+	fi
+	return 1
+)
+
+listPkgFullVersions() (
+	pkg="$1"
+	if type dnf &> /dev/null ; then
+		pkgMan="dnf"
+	else
+		pkgMan="yum"
+	fi
+	"${pkgMan}" list --showduplicates "${pkg}" 2>/dev/null \
+	| sed -n '/^Available Packages/,$p' \
+	| grep "^${pkg}" \
+	| awk '{ print $2 }' \
+	| sort -V
+)
+
+getPreviousReleased() (
+	pkg="$1"
+	fullVersion="$2"
+	versionsReleased="$( listPkgFullVersions "${pkg}" )" || return 1
+	printf '%s\n' "${versionsReleased}" \
+	| while read -r relVer ; do
+		if printf '%s' "${fullVersion}" | grep -q ":" ; then
+			relVerCmp="${relVer}"
+		else
+			relVerCmp="${relVer#*:}"
+		fi
+		if versionCompareLT "${relVerCmp}" "${fullVersion}" ; then
+			printf '%s\n' "${relVer#*:}"
+		fi
+	done | tail -n 1
+	return 0
+)
 
 jdkArch="$( uname -m )"
+
+if [ -n "${newJdkAuto:-}" ] ; then
+	latestJDKFullVersion="$( listPkgFullVersions "${jdkName}" | tail -n 1 )"
+	if [ -z "${latestJDKFullVersion}" ] ; then
+		printf '%s\n' "Failed to get newJdkAuto from ${jdkName}"
+		exit 1
+	fi
+	newJdkVersion="${latestJDKFullVersion%-*}"
+	newJdkVersion="${newJdkVersion#*:}"
+	newJdkRelease="${latestJDKFullVersion#*-}"
+fi
+
+if [ -n "${oldJdkAuto:-}" ] ; then
+	prevJDKFullVersion="$( getPreviousReleased "${jdkName}.${jdkArch}" "${newJdkVersion}-${newJdkRelease}" )"
+	if [ -z "${prevJDKFullVersion}" ] ; then
+		printf '%s\n' "Failed to get oldJdkAuto from ${jdkName}-${newJdkVersion}-${newJdkRelease}"
+		exit 1
+	fi
+	oldJdkVersion="${prevJDKFullVersion%-*}"
+	oldJdkRelease="${prevJDKFullVersion#*-}"
+fi
 
 # firt empty line is intentional (it is no suffix)
 jdkRpmSuffixes="
