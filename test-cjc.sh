@@ -741,10 +741,16 @@ testUpdateUnmodified
 cleanupJdks
 testDowngradeUnmodified
 cleanupJdks
-testUpdateModified
-cleanupJdks
-testDowngradeModified
-cleanupJdks
+if ! [ "java-latest-openjdk" = "${jdkName}" ] \
+  && ! [ "-fastdebug" = "${jdkSuffix:-}" ] \
+  && ! [ "-slowdebug" = "${jdkSuffix:-}" ] ; then
+  # c-j-c is not expected to preserve modifications of config files
+  # for java-latest-openjdk, fastdebug and slowdebug builds
+  testUpdateModified
+  cleanupJdks
+  testDowngradeModified
+  cleanupJdks
+fi
 testUpgradeDeleted
 cleanupJdks
 testDowngradeDeleted
