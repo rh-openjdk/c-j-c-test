@@ -408,23 +408,23 @@ isSameJdkDirOldNew() {
 }
 
 installOld() {
-	sudo "${pkgMan}" -y install --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
+	sudo debug=true "${pkgMan}" -y install --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
 }
 
 installNew() {
-	sudo "${pkgMan}" -y install --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
+	sudo debug=true "${pkgMan}" -y install --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
 }
 
 upgradeToNew() {
-	sudo "${pkgMan}" -y upgrade --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
+	sudo debug=true "${pkgMan}" -y upgrade --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
 }
 
 downgradeToOld() {
-	sudo "${pkgMan}" -y downgrade --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
+	sudo debug=true "${pkgMan}" -y downgrade --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
 }
 
 cleanupJdks() {
-	sudo "${pkgMan}" ${noAutoRem} -y remove --exclude="${cjcName}" "${jdkName}*"
+	sudo debug=true "${pkgMan}" ${noAutoRem} -y remove --exclude="${cjcName}" "${jdkName}*"
 	sudo rm -rf "/usr/lib/jvm/${jdkName}"*
 	sudo rm -rf "/usr/lib/jvm/${oldJdkInstName}"*
 	sudo rm -rf "/usr/lib/jvm/${newJdkInstName}"*
