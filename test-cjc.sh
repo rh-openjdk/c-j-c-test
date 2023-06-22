@@ -56,6 +56,10 @@ while [ "$#" -gt 0 ] ; do
 			shift
 			shift
 			;;
+		--enableCjcDebug)
+			cjcDebug=1
+			shift
+			;;
 		*)
 			printf '%s\n' "Unsupported arg: $1"
 			exit 1
@@ -263,6 +267,10 @@ basicInit() {
 		pkgMan="dnf"
 		noAutoRem="--noautoremove"
 	fi
+	cjcDebugArg=""
+	if [ -n "${cjcDebug:-}" ] ; then
+		cjcDebugArg="debug=true"
+	fi
 }
 
 getRpmCacheDir() (
@@ -408,23 +416,23 @@ isSameJdkDirOldNew() {
 }
 
 installOld() {
-	sudo "${pkgMan}" -y install --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
+	sudo ${cjcDebugArg} "${pkgMan}" -y install --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
 }
 
 installNew() {
-	sudo "${pkgMan}" -y install --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
+	sudo ${cjcDebugArg} "${pkgMan}" -y install --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
 }
 
 upgradeToNew() {
-	sudo "${pkgMan}" -y upgrade --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
+	sudo ${cjcDebugArg} "${pkgMan}" -y upgrade --exclude="${cjcName}" "${newRpmsDir}"/*.rpm
 }
 
 downgradeToOld() {
-	sudo "${pkgMan}" -y downgrade --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
+	sudo ${cjcDebugArg} "${pkgMan}" -y downgrade --exclude="${cjcName}" "${oldRpmsDir}"/*.rpm
 }
 
 cleanupJdks() {
-	sudo "${pkgMan}" ${noAutoRem} -y remove --exclude="${cjcName}" "${jdkName}*"
+	sudo ${cjcDebugArg} "${pkgMan}" ${noAutoRem} -y remove --exclude="${cjcName}" "${jdkName}*"
 	sudo rm -rf "/usr/lib/jvm/${jdkName}"*
 	sudo rm -rf "/usr/lib/jvm/${oldJdkInstName}"*
 	sudo rm -rf "/usr/lib/jvm/${newJdkInstName}"*
